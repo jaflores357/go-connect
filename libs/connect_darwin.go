@@ -6,7 +6,12 @@ package connect
 import (
 	"strings"
 	"os/exec"
+	"os"
 )
+
+func Username() string {
+	return os.Getenv("USER")
+}
 
 func wrapInQuotes(text string) string {
 	return "\"" + text + "\""
@@ -14,7 +19,6 @@ func wrapInQuotes(text string) string {
 
 func SshConn(conn string) {
 	
-
 	ssh_command := "ssh -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=30 -o StrictHostKeyChecking=no "+conn
 	exec_cmd := "create tab with default profile command " + wrapInQuotes(ssh_command)
 	application := wrapInQuotes("iTerm2")
@@ -27,7 +31,5 @@ func SshConn(conn string) {
 
 	_ = output 
 	_ = err
-	//fmt.Println(output)
-	//fmt.Println(err)
 	
 }

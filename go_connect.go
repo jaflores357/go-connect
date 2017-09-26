@@ -12,6 +12,7 @@ import (
   "sort"
   "strconv"
   "./libs"
+  "github.com/spf13/viper"
 )  
 
 
@@ -76,6 +77,14 @@ func IsNumeric(s string) bool {
 
 func main() {
 
+  viper.SetConfigName("config")
+  viper.AddConfigPath(".")
+  
+  err := viper.ReadInConfig() // Find and read the config file
+  if err != nil { // Handle errors reading the config file
+    panic(fmt.Errorf("Fatal error config file: %s \n", err))
+  } 
+
   // Get arguments
   args := os.Args
   
@@ -83,7 +92,7 @@ func main() {
   //downloadFromUrl("http://chef.zenvia360.com:4567/allnodes")
 
   // Read xml file
-  data, err := ioutil.ReadFile("allnodes")
+  data, err := ioutil.ReadFile(viper.GetString("db.path"))
   check(err)
 
   data_unmarsh := Project{}
@@ -142,7 +151,7 @@ func main() {
       
       // Literal - create cssh strig
       } else if args[3] == "cssh" {
-        cssh_string += " " + val + "@" + data_array[val]
+        cssh_string += connect.Username() + "@" + data_array[val] + " "
       }
     }
     count++

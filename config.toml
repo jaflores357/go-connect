@@ -1,0 +1,15 @@
+[general]
+key = "/Users/jorge.flores/.ssh/id_rsa"
+
+[db]
+url = "http://chef.zenvia360.com:4567/allnodes"
+path = "/tmp/allnodes"
+max_age = 30
+
+[mac]
+terminal = "iTerm2"
+
+[cssh]
+enable = false
+path = "/Users/jorge.flores/csshx/csshX"
+
