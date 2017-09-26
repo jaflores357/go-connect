@@ -5,7 +5,8 @@ import (
   "io"
   "io/ioutil"
 	"net/http"
-	"os"
+  "os"
+  "log"
   "strings"
   "encoding/xml"
   "reflect"
@@ -13,6 +14,8 @@ import (
   "strconv"
   "./libs"
   "github.com/spf13/viper"
+  "syscall"
+  "time"
 )  
 
 
@@ -35,35 +38,41 @@ type Node struct {
 
 func check(e error) {
   if e != nil {
-      panic(e)
+    log.Fatal(e)
   }
 }
 
-func downloadFromUrl(url string) {
-	tokens := strings.Split(url, "/")
-	fileName := tokens[len(tokens)-1]
+func checkDBFileAge() bool{
+
+  var st syscall.Stat_t
+  err := syscall.Stat(viper.GetString("db.path"), &st)
+  check(err)
+  
+  status := (time.Now().Unix() - st.Mtimespec.Sec) > viper.GetInt64("db.max_age")
+  return status
+
+}
+
+
+func downloadData() {
+  
+  url := viper.GetString("db.url")
+  fileName := viper.GetString("db.path")
 	fmt.Println("Downloading", url, "to", fileName)
 
 	// TODO: check file existence first with io.IsExist
 	output, err := os.Create(fileName)
-	if err != nil {
-		fmt.Println("Error while creating", fileName, "-", err)
-		return
-	}
+  check(err)
+
 	defer output.Close()
 
 	response, err := http.Get(url)
-	if err != nil {
-		fmt.Println("Error while downloading", url, "-", err)
-		return
-	}
+  check(err)
+
 	defer response.Body.Close()
 
 	n, err := io.Copy(output, response.Body)
-	if err != nil {
-		fmt.Println("Error while downloading", url, "-", err)
-		return
-	}
+  check(err)
 
 	fmt.Println(n, "bytes downloaded.")
 }
@@ -81,28 +90,35 @@ func main() {
   viper.AddConfigPath(".")
   
   err := viper.ReadInConfig() // Find and read the config file
-  if err != nil { // Handle errors reading the config file
-    panic(fmt.Errorf("Fatal error config file: %s \n", err))
-  } 
+  check(err)
 
   // Get arguments
   args := os.Args
   
-  // Download xml data
-  //downloadFromUrl("http://chef.zenvia360.com:4567/allnodes")
-
   // Read xml file
   data, err := ioutil.ReadFile(viper.GetString("db.path"))
-  check(err)
+  if err != nil {
+    fmt.Println("Cant read file: " + viper.GetString("db.path"))
+    downloadData()
+    os.Exit(0)
+  }
+
+  if len(args) < 3 {
+    if args[1] == "download" {
+      downloadData()
+    } else {
+      fmt.Println("Help ")
+    }
+    os.Exit(0)
+  }
+
+  if(checkDBFileAge()){
+    downloadData()
+  }
 
   data_unmarsh := Project{}
   err = xml.Unmarshal([]byte(data), &data_unmarsh)
   check(err)
-
-  if len(args) < 3 {
-    fmt.Println("Help ")
-    os.Exit(0)
-  }
 
   // Covert arg[1] to Title (first char uper case) to match Node struct
   args[1] = strings.Title(args[1])
