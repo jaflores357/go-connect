@@ -1,5 +1,7 @@
 package main
 
+///////////////////////////////////////////////////
+// Depndencies
 import (
 	"fmt"
   "io"
@@ -18,8 +20,8 @@ import (
   "time"
 )  
 
-
-
+///////////////////////////////////////////////////
+// Strunct data for xml file
 type Project struct {
 	Nodes    []Node    `xml:"node"`
 }
@@ -36,12 +38,16 @@ type Node struct {
   Ip          string `xml:"hostname,attr"`
 }
 
+///////////////////////////////////////////////////
+// Log error and exit
 func check(e error) {
   if e != nil {
     log.Fatal(e)
   }
 }
 
+///////////////////////////////////////////////////
+// Check DB file age
 func checkDBFileAge() bool{
 
   var st syscall.Stat_t
@@ -53,7 +59,8 @@ func checkDBFileAge() bool{
 
 }
 
-
+///////////////////////////////////////////////////
+// Download DB
 func downloadData() {
   
   url := viper.GetString("db.url")
@@ -77,19 +84,23 @@ func downloadData() {
 	fmt.Println(n, "bytes downloaded.")
 }
 
+///////////////////////////////////////////////////
 // Check if string is numeric
 func IsNumeric(s string) bool {
   _, err := strconv.ParseFloat(s, 64)
   return err == nil
 }
 
-
+///////////////////////////////////////////////////
+// Main block
 func main() {
 
+  // Define config file
   viper.SetConfigName("config")
   viper.AddConfigPath(".")
   
-  err := viper.ReadInConfig() // Find and read the config file
+  // Find and read the config file
+  err := viper.ReadInConfig() 
   check(err)
 
   // Get arguments
@@ -103,6 +114,7 @@ func main() {
     os.Exit(0)
   }
 
+  // Force DB download or print help when wrong parameters  
   if len(args) < 3 {
     if len(args) == 2 && args[1] == "download" {
       downloadData()
@@ -112,7 +124,7 @@ func main() {
     os.Exit(0)
   }
 
-  
+  // Force download if DB reach max_file age 
   if(checkDBFileAge()){
     downloadData()
   }
