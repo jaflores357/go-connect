@@ -104,7 +104,7 @@ func main() {
   }
 
   if len(args) < 3 {
-    if args[1] == "download" {
+    if len(args) == 2 && args[1] == "download" {
       downloadData()
     } else {
       fmt.Println("Help ")
@@ -112,6 +112,7 @@ func main() {
     os.Exit(0)
   }
 
+  
   if(checkDBFileAge()){
     downloadData()
   }
