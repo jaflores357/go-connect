@@ -70,7 +70,7 @@ func help(executable string){
 
   `+executable+` <TYPE> <STRING> <#ID|all|cssh>
 
-  TYPE: [name|description|osArch|osFamily|osName|osVersion|roles|recipes|tags|environment|hostname]
+  TYPE: [name|desc|osArch|osFamily|osName|osVersion|roles|env|ip]
 
   ID: Connect ssh specific host with ID listed in the Search
   all: Connect ssl ALL hosts listed in the Search
@@ -201,7 +201,7 @@ func main() {
       wg.Add(1)
       downloadData(&wg)
     } else {
-      help(executable)
+      help(filepath.Base(executable))
     }
     os.Exit(0)
   }
