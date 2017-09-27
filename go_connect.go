@@ -20,6 +20,7 @@ import (
   "time"
   "runtime"
   "sync"
+  "path/filepath"
 )  
 
 ///////////////////////////////////////////////////
@@ -40,17 +41,60 @@ type Node struct {
   Ip          string `xml:"hostname,attr"`
 }
 
+
+///////////////////////////////////////////////////
+// Help function
+func help(executable string){
+
+  helpString := `
+  Search:
+  -------
+
+  `+executable+` <TYPE> <STRING>
+
+  TYPE: [name|desc|osArch|osFamily|osName|osVersion|roles|env|ip]
+
+  Ex.:
+  `+executable+` name prd-sms-smpp
+  `+executable+` desc prd-sms-smpp
+  `+executable+` osArch x86_64
+  `+executable+` osFamily unix
+  `+executable+` osName centos
+  `+executable+` osVersion 6.5
+  `+executable+` roles td-agent
+  `+executable+` env sms-production
+  `+executable+` ip 10.0.2.41
+
+  Connect:
+  --------
+
+  `+executable+` <TYPE> <STRING> <#ID|all|cssh>
+
+  TYPE: [name|description|osArch|osFamily|osName|osVersion|roles|recipes|tags|environment|hostname]
+
+  ID: Connect ssh specific host with ID listed in the Search
+  all: Connect ssl ALL hosts listed in the Search
+  cssh: If installed and have binary point in connect.conf file
+
+  Ex.:
+
+  `+executable+` name prd-pay-cm 1
+  `+executable+` name prd-pay-cm all
+  `+executable+` name prd-pay-cm cssh
+  
+  `
+  fmt.Println(helpString)
+
+
+}
+
+
+
 ///////////////////////////////////////////////////
 // Log error and exit
 func check(e error) {
   if e != nil {
     log.Fatal(e)
-  }
-}
-
-func logError(e error) {
-  if e != nil {
-    log.Println(e.Error())
   }
 }
 
@@ -75,46 +119,31 @@ func downloadData(wg *sync.WaitGroup) {
 
   url := viper.GetString("db.url")
   fileName := viper.GetString("db.path")
-  tmp_fileName := fileName + ".tmp"
-	
 
-  _, err := os.Stat(tmp_fileName)
-  if err != nil {
-    log.Println("Downloading", url, "to", tmp_fileName)
+  log.Println("Downloading", url, "to", fileName)
 
-    var netClient = &http.Client{
-      Timeout: time.Second * viper.GetDuration("db.url_timeout"),
-    }
-    
-    response, err := netClient.Get(url)
-    if err == nil {
-      
-      defer response.Body.Close()
-      output, err := os.Create(tmp_fileName)
-      
-      if err == nil {
-
-        defer output.Close()
-        n, err := io.Copy(output, response.Body)
-        check(err)
-      
-        log.Println(n, "bytes downloaded.")
-        
-        err = os.Rename(tmp_fileName, fileName)
-        check(err)
-
-      } else {
-        log.Println("here")
-        log.Println(err.Error())  
-      }
-    } else {
-      log.Println(err.Error())
-    }
-
-  } else {
-    log.Println("Skip, already downloading!")
+  var netClient = &http.Client{
+    Timeout: time.Second * viper.GetDuration("db.url_timeout"),
   }
   
+  response, err := netClient.Get(url)
+  if err == nil {
+    
+    defer response.Body.Close()
+    output, err := os.Create(fileName)
+    check(err)
+    
+    defer output.Close()
+    
+    n, err := io.Copy(output, response.Body)
+    check(err)
+    
+    log.Println(n, "bytes downloaded.")
+
+  } else {
+    log.Println(err.Error())
+  }
+
 }
 
 ///////////////////////////////////////////////////
@@ -129,13 +158,31 @@ func IsNumeric(s string) bool {
 func main() {
   runtime.GOMAXPROCS(1)
   var wg sync.WaitGroup
+
+// Application directory
+  executable, err := os.Executable(); check(err)
+  linkpath, err := os.Readlink(executable);
+  if err != nil{
+    linkpath = executable
+  }
+  appFolder, err := filepath.Abs(filepath.Dir(linkpath)); check(err)
+  
 // Config file name and path
   viper.SetConfigName("config")
-  viper.AddConfigPath(".")
+  viper.AddConfigPath(appFolder)
   
 // Find and read the config file
-  err := viper.ReadInConfig() 
+  err = viper.ReadInConfig() 
   check(err)
+
+// Logfile
+  logfile, err := os.OpenFile(viper.GetString("general.logfile"), os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+  check(err)
+
+  defer logfile.Close()
+  
+  log.SetOutput(logfile)
+
 
 // Get arguments
   args := os.Args
@@ -154,7 +201,7 @@ func main() {
       wg.Add(1)
       downloadData(&wg)
     } else {
-      fmt.Println("Help ")
+      help(executable)
     }
     os.Exit(0)
   }

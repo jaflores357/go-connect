@@ -1,4 +1,5 @@
 [general]
+logfile = "/tmp/go_connect.log"
 key = "/Users/jorge.flores/.ssh/id_rsa"
 
 [db]
