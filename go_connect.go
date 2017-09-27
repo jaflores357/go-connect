@@ -68,7 +68,7 @@ func help(executable string){
   Connect:
   --------
 
-  `+executable+` <TYPE> <STRING> <#ID|all|cssh>
+  `+executable+` <TYPE> <STRING> < #Index | all | cssh >
 
   TYPE: [name|desc|osArch|osFamily|osName|osVersion|roles|env|ip]
 
