@@ -214,7 +214,11 @@ func main() {
 
   data_unmarsh := Project{}
   err = xml.Unmarshal([]byte(data), &data_unmarsh)
-  check(err)
+  if err != nil {
+    fmt.Println("Data file "+viper.GetString("db.path")+" corrupt. Downloading a new one")
+    wg.Add(1)
+    downloadData(&wg)
+  }
 
 // Covert arg[1] to Title (first char uper case) to match Node struct
   args[1] = strings.Title(args[1])
