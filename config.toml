@@ -3,6 +3,7 @@ key = "/Users/jorge.flores/.ssh/id_rsa"
 
 [db]
 url = "http://chef.zenvia360.com:4567/allnodes"
+url_timeout = 1 
 path = "/tmp/allnodes"
 max_age = 30
 
