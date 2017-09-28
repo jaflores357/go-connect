@@ -16,7 +16,6 @@ import (
   "strconv"
   "./libs"
   "github.com/spf13/viper"
-  "syscall"
   "time"
   "runtime"
   "sync"
@@ -102,11 +101,10 @@ func check(e error) {
 // Check DB file age
 func checkDBFileAge() bool{
 
-  var st syscall.Stat_t
-  err := syscall.Stat(viper.GetString("db.path"), &st)
+  fileInfo, err := os.Lstat(viper.GetString("db.path"))
   check(err)
   
-  status := (time.Now().Unix() - st.Mtimespec.Sec) > viper.GetInt64("db.max_age")
+  status := (time.Now().Unix() - fileInfo.ModTime().Unix()) > viper.GetInt64("db.max_age")
   return status
 
 }
