@@ -20,6 +20,7 @@ import (
   "runtime"
   "sync"
   "path/filepath"
+  "github.com/kardianos/osext"
 )  
 
 ///////////////////////////////////////////////////
@@ -158,11 +159,13 @@ func main() {
   var wg sync.WaitGroup
 
 // Application directory
-  executable, err := os.Executable(); check(err)
+
+  executable, err := osext.Executable(); check(err)
   linkpath, err := os.Readlink(executable);
   if err != nil{
     linkpath = executable
   }
+  
   appFolder, err := filepath.Abs(filepath.Dir(linkpath)); check(err)
   
 // Config file name and path
