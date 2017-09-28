@@ -3,7 +3,10 @@
 
 package connect
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 func Username() string {
 	return os.Getenv("USER")
