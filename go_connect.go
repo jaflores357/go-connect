@@ -247,7 +247,11 @@ func main() {
 
 // Force download if DB reach max_file age 
   if(checkDBFileAge()){
-    err := downloadData(); check(err)
+    err := downloadData()
+    if err != nil {
+      fmt.Println("Cant update nodes file, check "+cfg.General.LogFile+" for details!")
+    }
+
   }
 
 // Unmarshal xml, download a new one if corrupt  
@@ -315,7 +319,7 @@ func main() {
     }
     count++
   }
-  
+
 // Run cssh is exist and list is not empty
   if len(cssh_string) > 0 {
     if (cfg.CSSH.Enable){ 
