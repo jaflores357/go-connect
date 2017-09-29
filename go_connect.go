@@ -8,6 +8,7 @@ import (
   "io/ioutil"
   "net/http"
   "net"
+  "net/url"
   "os"
   "log"
   "strings"
@@ -131,18 +132,21 @@ func checkDBFileAge() bool{
 // Download DB
 func downloadData() (error) {
   
-  url := cfg.DB.Api
+  dbapi := cfg.DB.Api
   fileName := cfg.DB.Path
 
-  log.Println("Downloading", url, "to", fileName)
+  u, err := url.Parse(dbapi)
+  hostTest := u.Host
 
-  _, err := net.DialTimeout("tcp", "chef.zenvia360.com:4567", 1 * time.Second )
+// Teste host and port
+  _, err = net.DialTimeout("tcp", hostTest, 1 * time.Second )
   if err != nil {
 
       return err
 
   } else {
 
+    log.Println("Downloading", dbapi, "to", fileName)
     netTransport := &http.Transport{
       DialContext: (&net.Dialer{
         Timeout: time.Second * cfg.DB.ConnectionTimeout,
@@ -154,7 +158,7 @@ func downloadData() (error) {
       Timeout: time.Second * cfg.DB.RequestTimeout,
     }
     
-    response, err := netClient.Get(url)
+    response, err := netClient.Get(dbapi)
     if err == nil {
       
       defer response.Body.Close()
@@ -268,6 +272,8 @@ func main() {
 // Get and sort xml values by query arguments
   data_array := make(map[string]string)
   keys := []string{}
+
+  
   
   for  _, value := range data_unmarsh.Nodes {
 // reflect used to use method dinamicaly
@@ -280,7 +286,11 @@ func main() {
       keys = append(keys, value.Desc)  
     }
   }
-
+  
+  if (len(keys) == 0){
+    fmt.Println("No results found!")
+    os.Exit(0)
+  }
 // Sort keys 
   sort.Strings(keys)
    
