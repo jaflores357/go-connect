@@ -6,7 +6,8 @@ import (
 	"fmt"
   "io"
   "io/ioutil"
-	"net/http"
+  "net/http"
+  "net"
   "os"
   "log"
   "strings"
@@ -17,14 +18,12 @@ import (
   "./libs"
   "github.com/spf13/viper"
   "time"
-  "runtime"
-  "sync"
   "path/filepath"
   "github.com/kardianos/osext"
 )  
 
 ///////////////////////////////////////////////////
-// Strunct data for xml file
+// Struct data for xml file
 type Project struct {
 	Nodes    []Node    `xml:"node"`
 }
@@ -41,6 +40,24 @@ type Node struct {
   Ip          string `xml:"hostname,attr"`
 }
 
+///////////////////////////////////////////////////
+// Struct config file
+type Config struct {
+  General struct {
+    LogFile string
+  }
+  DB struct {
+    Api string
+    RequestTimeout time.Duration
+    ConnectionTimeout time.Duration
+    Path string
+    MaxAge int64
+  }
+  CSSH struct {
+    Enable bool
+    Path string
+  }
+}
 
 ///////////////////////////////////////////////////
 // Help function
@@ -102,47 +119,61 @@ func check(e error) {
 // Check DB file age
 func checkDBFileAge() bool{
 
-  fileInfo, err := os.Lstat(viper.GetString("db.path"))
+  fileInfo, err := os.Lstat(cfg.DB.Path)
   check(err)
   
-  status := (time.Now().Unix() - fileInfo.ModTime().Unix()) > viper.GetInt64("db.max_age")
+  status := (time.Now().Unix() - fileInfo.ModTime().Unix()) > cfg.DB.MaxAge
   return status
 
 }
 
 ///////////////////////////////////////////////////
 // Download DB
-func downloadData(wg *sync.WaitGroup) {
+func downloadData() (error) {
   
-  defer wg.Done()
-
-  url := viper.GetString("db.url")
-  fileName := viper.GetString("db.path")
+  url := cfg.DB.Api
+  fileName := cfg.DB.Path
 
   log.Println("Downloading", url, "to", fileName)
 
-  var netClient = &http.Client{
-    Timeout: time.Second * viper.GetDuration("db.url_timeout"),
-  }
-  
-  response, err := netClient.Get(url)
-  if err == nil {
-    
-    defer response.Body.Close()
-    output, err := os.Create(fileName)
-    check(err)
-    
-    defer output.Close()
-    
-    n, err := io.Copy(output, response.Body)
-    check(err)
-    
-    log.Println(n, "bytes downloaded.")
+  _, err := net.DialTimeout("tcp", "chef.zenvia360.com:4567", 1 * time.Second )
+  if err != nil {
+
+      return err
 
   } else {
-    log.Println(err.Error())
-  }
 
+    netTransport := &http.Transport{
+      DialContext: (&net.Dialer{
+        Timeout: time.Second * cfg.DB.ConnectionTimeout,
+      }).DialContext,
+    }
+
+    netClient := &http.Client{
+      Transport: netTransport,
+      Timeout: time.Second * cfg.DB.RequestTimeout,
+    }
+    
+    response, err := netClient.Get(url)
+    if err == nil {
+      
+      defer response.Body.Close()
+      output, err := os.Create(fileName)
+      check(err)
+      
+      defer output.Close()
+      
+      n, err := io.Copy(output, response.Body)
+      check(err)
+      
+      log.Println(n, "bytes downloaded.")
+      return nil
+
+    } else {
+      log.Println(err.Error())
+      return err
+    }
+  }
 }
 
 ///////////////////////////////////////////////////
@@ -153,10 +184,12 @@ func IsNumeric(s string) bool {
 }
 
 ///////////////////////////////////////////////////
+// Global var
+var cfg Config
+
+///////////////////////////////////////////////////
 // Main block
 func main() {
-  runtime.GOMAXPROCS(1)
-  var wg sync.WaitGroup
 
 // Application directory
 
@@ -171,17 +204,20 @@ func main() {
 // Config file name and path
   viper.SetConfigName("config")
   viper.AddConfigPath(appFolder)
-  
+
 // Find and read the config file
   err = viper.ReadInConfig() 
   check(err)
 
+// Unmarshal config to global cfg var  
+  err = viper.Unmarshal(&cfg)
+  check(err)
+  
 // Logfile
-  logfile, err := os.OpenFile(viper.GetString("general.logfile"), os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+  logfile, err := os.OpenFile(cfg.General.LogFile, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
   check(err)
 
-  defer logfile.Close()
-  
+  defer logfile.Close() 
   log.SetOutput(logfile)
 
 
@@ -189,18 +225,20 @@ func main() {
   args := os.Args
   
 // Read xml file
-  data, err := ioutil.ReadFile(viper.GetString("db.path"))
+  data, err := ioutil.ReadFile(cfg.DB.Path)
   if err != nil {
-    log.Println("Cant read file: " + viper.GetString("db.path"))
-    wg.Add(1)
-    downloadData(&wg)
+    log.Println("Cant read file: " + cfg.DB.Path)
+    err := downloadData()
+    if err != nil {
+      fmt.Println("Cant download nodes file, check "+cfg.General.LogFile+" for details!")    
+      check(err)
+    }
   }
 
 // Force DB download or print help when wrong parameters  
   if len(args) < 3 {
     if len(args) == 2 && args[1] == "download" {
-      wg.Add(1)
-      downloadData(&wg)
+      err := downloadData(); check(err)
     } else {
       help(filepath.Base(executable))
     }
@@ -209,16 +247,15 @@ func main() {
 
 // Force download if DB reach max_file age 
   if(checkDBFileAge()){
-    wg.Add(1)
-    go downloadData(&wg)
+    err := downloadData(); check(err)
   }
 
+// Unmarshal xml, download a new one if corrupt  
   data_unmarsh := Project{}
   err = xml.Unmarshal([]byte(data), &data_unmarsh)
   if err != nil {
-    fmt.Println("Data file "+viper.GetString("db.path")+" corrupt. Downloading a new one")
-    wg.Add(1)
-    downloadData(&wg)
+    fmt.Println("Data file "+cfg.DB.Path+" corrupt. Downloading a new one")
+    err := downloadData(); check(err)
   }
 
 // Covert arg[1] to Title (first char uper case) to match Node struct
@@ -239,6 +276,7 @@ func main() {
       keys = append(keys, value.Desc)  
     }
   }
+
 // Sort keys 
   sort.Strings(keys)
    
@@ -248,20 +286,24 @@ func main() {
   
 // Run flux based on option
   for _, val := range keys {
+
 // No index in arguments - print list
     if len(args) < 4 {
       fmt.Println(count, " - ", val," :: ", data_array[val])
       
     } else { 
+
 // Numeric argument 
       if IsNumeric(args[3]) { 
         index, err := strconv.Atoi(args[3])
         check(err)
+
 // If match, connect and exit
         if index == count {
           connect.SshConn(data_array[val])
           os.Exit(0)
         }
+
 // Literal - connect all list 
       } else if args[3] == "all" {
         connect.SshConn(data_array[val])
@@ -273,14 +315,14 @@ func main() {
     }
     count++
   }
+  
 // Run cssh is exist and list is not empty
   if len(cssh_string) > 0 {
-    if (viper.GetBool("cssh.enable")){ 
+    if (cfg.CSSH.Enable){ 
       fmt.Println("cssh " + cssh_string)
     } else {
       fmt.Println("cssh disabled!")
     }
     
   }
-  wg.Wait()
 }

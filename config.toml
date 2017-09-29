@@ -1,17 +1,14 @@
-[general]
-logfile = "/tmp/go_connect.log"
-key = "/Users/jorge.flores/.ssh/id_rsa"
+[General]
+LogFile = "/tmp/go_connect.log"
 
-[db]
-url = "http://chef.zenvia360.com:4567/allnodes"
-url_timeout = 1 
-path = "/tmp/allnodes"
-max_age = 30
+[DB]
+Api = "http://chef.zenvia360.com:4567/allnodes"
+RequestTimeout = 5
+ConnectonTimeout = 1 
+Path = "/Users/jorge.flores/nodes.db"
+MaxAge = 30
 
-[mac]
-terminal = "iTerm2"
-
-[cssh]
-enable = false
-path = "/Users/jorge.flores/csshx/csshX"
+[CSSH]
+Enable = false
+Path = "/Users/jorge.flores/csshx/csshX"
 
