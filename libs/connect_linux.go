@@ -12,11 +12,15 @@ func Username() string {
 	return os.Getenv("USER")
 }
 
+func wrapInQuotes(text string) string {
+	return "\"" + text + "\""
+}
+
 func SshConn(conn string) {
 
-	_ = exec.Command("xdotool", "key", "ctrl+shift+t")
-	_ = exec.Command("echo", conn)
-
-	fmt.Println("ssh linux: ", conn)
+	ssh_command := "ssh -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=30 -o StrictHostKeyChecking=no "+conn
+	command := "gnome-terminal -x bash -c " + wrapInQuotes(ssh_command)
+	
+	_ = exec.Command(command)
 	
 }
