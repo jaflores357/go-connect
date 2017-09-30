@@ -148,9 +148,9 @@ func downloadData() (error) {
 
     log.Println("Downloading", dbapi, "to", fileName)
     netTransport := &http.Transport{
-      DialContext: (&net.Dialer{
+      Dial: (&net.Dialer{
         Timeout: time.Second * cfg.DB.ConnectionTimeout,
-      }).DialContext,
+      }).Dial,
     }
 
     netClient := &http.Client{
