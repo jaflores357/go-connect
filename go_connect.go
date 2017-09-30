@@ -212,7 +212,10 @@ func main() {
 
 // Find and read the config file
   err = viper.ReadInConfig() 
-  check(err)
+  if err != nil {
+    fmt.Println(err.Error())
+    os.Exit(1)
+  }
 
 // Unmarshal config to global cfg var  
   err = viper.Unmarshal(&cfg)
