@@ -14,6 +14,9 @@ func Username() string {
 
 func SshConn(conn string) {
 
+	_ = exec.Command("xdotool", "key", "ctrl+shift+t")
+	_ = exec.Command("echo", conn)
+
 	fmt.Println("ssh linux: ", conn)
 	
 }
