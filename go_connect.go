@@ -21,6 +21,7 @@ import (
   "time"
   "path/filepath"
   "github.com/kardianos/osext"
+  "flag"
 )  
 
 ///////////////////////////////////////////////////
@@ -226,8 +227,20 @@ func main() {
 
 
 // Get arguments
-  args := os.Args
+  keyOption := flag.String("i", "", "private key file")
+  userOption := flag.String("u", "", "username")
   
+  flag.Parse()
+  args := flag.Args()
+  
+// Username and key
+  sshkey := *keyOption
+  username := *userOption
+  if username == "" {
+    username = connect.Username()
+  }
+  
+
 // Read xml file
   data, err := ioutil.ReadFile(cfg.DB.Path)
   if err != nil {
@@ -240,8 +253,8 @@ func main() {
   }
 
 // Force DB download or print help when wrong parameters  
-  if len(args) < 3 {
-    if len(args) == 2 && args[1] == "download" {
+  if len(args) < 2 {
+    if len(args) == 1 && args[0] == "download" {
       err := downloadData(); check(err)
     } else {
       help(filepath.Base(executable))
@@ -267,7 +280,8 @@ func main() {
   }
 
 // Covert arg[1] to Title (first char uper case) to match Node struct
-  args[1] = strings.Title(args[1])
+  args[0] = strings.Title(args[0])
+  
 
 // Get and sort xml values by query arguments
   data_array := make(map[string]string)
@@ -278,10 +292,10 @@ func main() {
   for  _, value := range data_unmarsh.Nodes {
 // reflect used to use method dinamicaly
     s := reflect.ValueOf(value)
-    f := s.FieldByName(args[1]).Interface().(string)
+    f := s.FieldByName(args[0]).Interface().(string)
 
 // populate map and keys if string found
-    if strings.Contains(f, args[2]){
+    if strings.Contains(f, args[1]){
       data_array[value.Desc] = value.Ip
       keys = append(keys, value.Desc)  
     }
@@ -302,29 +316,29 @@ func main() {
   for _, val := range keys {
 
 // No index in arguments - print list
-    if len(args) < 4 {
+    if len(args) < 3 {
       fmt.Println(count, " - ", val," :: ", data_array[val])
       
     } else { 
 
 // Numeric argument 
-      if IsNumeric(args[3]) { 
-        index, err := strconv.Atoi(args[3])
+      if IsNumeric(args[2]) { 
+        index, err := strconv.Atoi(args[2])
         check(err)
 
 // If match, connect and exit
         if index == count {
-          connect.SshConn(data_array[val])
+          connect.SshConn(data_array[val], username, sshkey)
           os.Exit(0)
         }
 
 // Literal - connect all list 
-      } else if args[3] == "all" {
-        connect.SshConn(data_array[val])
+      } else if args[2] == "all" {
+        connect.SshConn(data_array[val], username, sshkey)
       
 // Literal - create cssh string
-      } else if args[3] == "cssh" {
-        cssh_string += connect.Username() + "@" + data_array[val] + " "
+      } else if args[2] == "cssh" {
+        cssh_string += username + "@" + data_array[val] + " "
       }
     }
     count++

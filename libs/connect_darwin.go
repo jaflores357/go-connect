@@ -18,9 +18,13 @@ func wrapInQuotes(text string) string {
 	return "\"" + text + "\""
 }
 
-func SshConn(conn string) {
+func SshConn(conn string, username string, sshkey string) {
 	
-	ssh_command := "ssh -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=30 -o StrictHostKeyChecking=no "+conn
+	if sshkey != "" {
+		sshkey = " -i " + sshkey
+	}
+	
+	ssh_command := "ssh -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=30 -o StrictHostKeyChecking=no "+username+"@"+conn+sshkey
 	terminal_app := os.Getenv("TERM_PROGRAM")
 	command := ""
 
