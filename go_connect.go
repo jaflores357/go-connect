@@ -247,7 +247,7 @@ func main() {
 // Read xml file
   data, err := ioutil.ReadFile(cfg.DB.Path)
   if err != nil {
-    log.Println("Cant read file: " + cfg.DB.Path)
+    fmt.Println("Cant read file: " + cfg.DB.Path)
     err := downloadData()
     if err != nil {
       fmt.Println("Cant download nodes file, check "+cfg.General.LogFile+" for details!")    
