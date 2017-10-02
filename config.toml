@@ -1,12 +1,13 @@
 [General]
 LogFile = "/tmp/go_connect.log"
 
-[DB]
+[Nodes]
+NodesFile = "/Users/jorge.flores/nodes.db"
 Api = "http://chef.zenvia360.com:4567/allnodes"
 RequestTimeout = 5
 ConnectonTimeout = 1 
-Path = "/Users/jorge.flores/nodes.db"
 MaxAge = 30
+AutoUpdate = false
 
 [CSSH]
 Enable = false

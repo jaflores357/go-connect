@@ -48,12 +48,13 @@ type Config struct {
   General struct {
     LogFile string
   }
-  DB struct {
+  Nodes struct {
     Api string
     RequestTimeout time.Duration
     ConnectionTimeout time.Duration
-    Path string
+    NodesFile string
     MaxAge int64
+    AutoUpdate bool
   }
   CSSH struct {
     Enable bool
@@ -118,23 +119,23 @@ func check(e error) {
 }
 
 ///////////////////////////////////////////////////
-// Check DB file age
-func checkDBFileAge() bool{
+// Check Nodes file age
+func checkNodesFileAge() bool{
 
-  fileInfo, err := os.Lstat(cfg.DB.Path)
+  fileInfo, err := os.Lstat(cfg.Nodes.NodesFile)
   check(err)
   
-  status := (time.Now().Unix() - fileInfo.ModTime().Unix()) > cfg.DB.MaxAge
+  status := (time.Now().Unix() - fileInfo.ModTime().Unix()) > cfg.Nodes.MaxAge
   return status
 
 }
 
 ///////////////////////////////////////////////////
-// Download DB
+// Download Nodes file
 func downloadData() (error) {
   
-  dbapi := cfg.DB.Api
-  fileName := cfg.DB.Path
+  dbapi := cfg.Nodes.Api
+  fileName := cfg.Nodes.NodesFile
 
   u, err := url.Parse(dbapi)
   hostTest := u.Host
@@ -150,13 +151,13 @@ func downloadData() (error) {
     log.Println("Downloading", dbapi, "to", fileName)
     netTransport := &http.Transport{
       Dial: (&net.Dialer{
-        Timeout: time.Second * cfg.DB.ConnectionTimeout,
+        Timeout: time.Second * cfg.Nodes.ConnectionTimeout,
       }).Dial,
     }
 
     netClient := &http.Client{
       Transport: netTransport,
-      Timeout: time.Second * cfg.DB.RequestTimeout,
+      Timeout: time.Second * cfg.Nodes.RequestTimeout,
     }
     
     response, err := netClient.Get(dbapi)
@@ -245,9 +246,9 @@ func main() {
   
 
 // Read xml file
-  data, err := ioutil.ReadFile(cfg.DB.Path)
+  data, err := ioutil.ReadFile(cfg.Nodes.NodesFile)
   if err != nil {
-    fmt.Println("Cant read file: " + cfg.DB.Path)
+    fmt.Println("Cant read file: " + cfg.Nodes.NodesFile)
     err := downloadData()
     if err != nil {
       fmt.Println("Cant download nodes file, check "+cfg.General.LogFile+" for details!")    
@@ -255,7 +256,7 @@ func main() {
     }
   }
 
-// Force DB download or print help when wrong parameters  
+// Force Nodes file download or print help when wrong parameters  
   if len(args) < 2 {
     if len(args) == 1 && args[0] == "download" {
       err := downloadData(); check(err)
@@ -265,8 +266,8 @@ func main() {
     os.Exit(0)
   }
 
-// Force download if DB reach max_file age 
-  if(checkDBFileAge()){
+// Force download if Nodes file reach max_file age 
+  if(checkNodesFileAge() && cfg.Nodes.AutoUpdate){
     err := downloadData()
     if err != nil {
       fmt.Println("Cant update nodes file, check "+cfg.General.LogFile+" for details!")
@@ -278,7 +279,7 @@ func main() {
   data_unmarsh := Project{}
   err = xml.Unmarshal([]byte(data), &data_unmarsh)
   if err != nil {
-    fmt.Println("Data file "+cfg.DB.Path+" corrupt. Downloading a new one")
+    fmt.Println("Data file "+cfg.Nodes.NodesFile+" corrupt. Downloading a new one")
     err := downloadData(); check(err)
   }
 
@@ -287,7 +288,8 @@ func main() {
   
 
 // Get and sort xml values by query arguments
-  data_array := make(map[string]string)
+  arrayIPs := make(map[string]string)
+  arrayRoles := make(map[string]string)
   keys := []string{}
 
   
@@ -299,7 +301,8 @@ func main() {
 
 // populate map and keys if string found
     if strings.Contains(f, args[1]){
-      data_array[value.Desc] = value.Ip
+      arrayIPs[value.Desc] = value.Ip
+      arrayRoles[value.Desc] = value.Roles
       keys = append(keys, value.Desc)  
     }
   }
@@ -320,7 +323,7 @@ func main() {
 
 // No index in arguments - print list
     if len(args) < 3 {
-      fmt.Println(count, " - ", val," :: ", data_array[val])
+      fmt.Println(count, " - ", val," :: ", arrayIPs[val], " :: ",arrayRoles[val])
       
     } else { 
 
@@ -331,17 +334,17 @@ func main() {
 
 // If match, connect and exit
         if index == count {
-          connect.SshConn(data_array[val], username, sshkey)
+          connect.SshConn(arrayIPs[val], username, sshkey)
           os.Exit(0)
         }
 
 // Literal - connect all list 
       } else if args[2] == "all" {
-        connect.SshConn(data_array[val], username, sshkey)
+        connect.SshConn(arrayIPs[val], username, sshkey)
       
 // Literal - create cssh string
       } else if args[2] == "cssh" {
-        cssh_string += username + "@" + data_array[val] + " "
+        cssh_string += username + "@" + arrayIPs[val] + " "
       }
     }
     count++
