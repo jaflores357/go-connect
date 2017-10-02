@@ -2,8 +2,8 @@
 LogFile = "/tmp/go_connect.log"
 
 [Nodes]
-NodesFile = "/Users/jorge.flores/nodes.db"
-Api = "http://chef.zenvia360.com:4567/allnodes"
+NodesFile = "/tmp/nodes.db"
+Api = "http://<url>/allnodes"
 RequestTimeout = 5
 ConnectonTimeout = 1 
 MaxAge = 30
@@ -11,5 +11,5 @@ AutoUpdate = false
 
 [CSSH]
 Enable = false
-Path = "/Users/jorge.flores/csshx/csshX"
+Path = "/usr/bin/csshX"
 
